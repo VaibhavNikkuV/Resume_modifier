@@ -8,7 +8,6 @@ from PyPDF2 import PdfReader
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain.chains import LLMChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field
 
@@ -168,8 +167,8 @@ class DocumentParser:
             partial_variables={"format_instructions": parser.get_format_instructions()}
         )
 
-        # Create chain
-        chain = LLMChain(llm=self.llm, prompt=prompt)
+        # Create chain using the pipe operator
+        chain = prompt | self.llm | parser
 
         # Split text and process all chunks
         texts = self.text_splitter.split_text(text)
@@ -177,8 +176,7 @@ class DocumentParser:
         
         for chunk in texts:
             try:
-                result = chain.run(text=chunk)
-                parsed_data = parser.parse(result)
+                parsed_data = chain.invoke({"text": chunk})
                 parsed_chunks.append(parsed_data.model_dump())
             except Exception as e:
                 print(f"Error parsing chunk: {e}")
@@ -210,17 +208,15 @@ class DocumentParser:
             partial_variables={"format_instructions": parser.get_format_instructions()}
         )
 
-        # Create chain
-        chain = LLMChain(llm=self.llm, prompt=prompt)
+        # Create chain using the pipe operator
+        chain = prompt | self.llm | parser
 
         # Split text if it's too long
         texts = self.text_splitter.split_text(text)
         
         # Process first chunk (most important part of job description)
-        result = chain.run(text=texts[0])
-        
         try:
-            parsed_data = parser.parse(result)
+            parsed_data = chain.invoke({"text": texts[0]})
             return parsed_data.model_dump()
         except Exception as e:
             print(f"Error parsing job description data: {e}")
