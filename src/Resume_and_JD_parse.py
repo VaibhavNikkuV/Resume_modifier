@@ -2,16 +2,15 @@ import os
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 from langchain_openai import ChatOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain.chains import LLMChain
-from langchain.output_parsers import PydanticOutputParser
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pydantic import BaseModel, Field
-from typing import List, Optional
 
 # Load environment variables
 load_dotenv()
@@ -37,10 +36,20 @@ class Experience(BaseModel):
     duration: str = Field(description="Duration of employment")
     description: List[str] = Field(description="List of responsibilities and achievements")
 
+class Project(BaseModel):
+    name: str = Field(description="Name of the project")
+    duration: Optional[str] = Field(description="Duration or timeframe of the project")
+    description: str = Field(description="Detailed description of the project")
+    technologies: List[str] = Field(description="Technologies, tools, and languages used")
+    role: Optional[str] = Field(description="Role in the project")
+    url: Optional[str] = Field(description="Project URL or repository link if available")
+    achievements: Optional[List[str]] = Field(description="Key achievements or outcomes of the project")
+
 class ResumeData(BaseModel):
     personal_info: PersonalInfo = Field(description="Personal information of the candidate")
     education: List[Education] = Field(description="List of educational qualifications")
     experience: List[Experience] = Field(description="List of work experiences")
+    projects: List[Project] = Field(description="List of projects worked on")
     skills: List[str] = Field(description="List of technical and soft skills")
 
 class JobDescription(BaseModel):
@@ -59,8 +68,8 @@ class DocumentParser:
         
         # Initialize LangChain components
         self.llm = ChatOpenAI(
-            model_name="gpt-4-turbo-preview",
-            temperature=0,
+            model_name="gpt-4-turbo-preview",  # Updated to correct model name
+            temperature=0,  # Set to 0 for more consistent outputs
         )
         
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -90,7 +99,8 @@ class DocumentParser:
         # Create prompt template
         resume_template = """
         Extract structured information from the following resume text. 
-        Include all relevant information in the specified format.
+        Pay special attention to projects section and include all project details in the specified format.
+        Make sure to extract all relevant information about projects including technologies used and achievements.
 
         Resume Text:
         {text}
