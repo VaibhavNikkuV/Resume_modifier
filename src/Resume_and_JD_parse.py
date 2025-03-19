@@ -18,48 +18,48 @@ load_dotenv()
 # Define output schemas using Pydantic
 class PersonalInfo(BaseModel):
     name: str = Field(description="Full name of the person")
-    email: Optional[str] = Field(description="Email address")
-    phone: Optional[str] = Field(description="Phone number")
-    location: Optional[str] = Field(description="Current location")
-    linkedin: Optional[str] = Field(description="LinkedIn profile URL")
+    email: Optional[str] = Field(description="Email address", default=None)
+    phone: Optional[str] = Field(description="Phone number", default=None)
+    location: Optional[str] = Field(description="Current location", default=None)
+    linkedin: Optional[str] = Field(description="LinkedIn profile URL", default=None)
 
 class Education(BaseModel):
     degree: str = Field(description="Degree name")
-    institution: str = Field(description="Institution name")
-    graduation_year: Optional[str] = Field(description="Year of graduation")
-    gpa: Optional[str] = Field(description="GPA if mentioned")
-    major: Optional[str] = Field(description="Field of study/Major")
+    institution: Optional[str] = Field(description="Institution name", default="Not specified")
+    graduation_year: Optional[str] = Field(description="Year of graduation", default=None)
+    gpa: Optional[str] = Field(description="GPA if mentioned", default=None)
+    major: Optional[str] = Field(description="Field of study/Major", default=None)
 
 class Experience(BaseModel):
     company: str = Field(description="Company name")
     position: str = Field(description="Job title/position")
-    duration: str = Field(description="Duration of employment")
-    description: List[str] = Field(description="List of responsibilities and achievements")
+    duration: Optional[str] = Field(description="Duration of employment", default="Not specified")
+    description: List[str] = Field(description="List of responsibilities and achievements", default_factory=list)
 
 class Project(BaseModel):
     name: str = Field(description="Name of the project")
-    duration: Optional[str] = Field(description="Duration or timeframe of the project")
+    duration: Optional[str] = Field(description="Duration or timeframe of the project", default=None)
     description: str = Field(description="Detailed description of the project")
-    technologies: List[str] = Field(description="Technologies, tools, and languages used")
-    role: Optional[str] = Field(description="Role in the project")
-    url: Optional[str] = Field(description="Project URL or repository link if available")
-    achievements: Optional[List[str]] = Field(description="Key achievements or outcomes of the project")
+    technologies: List[str] = Field(description="Technologies, tools, and languages used", default_factory=list)
+    role: Optional[str] = Field(description="Role in the project", default=None)
+    url: Optional[str] = Field(description="Project URL or repository link if available", default=None)
+    achievements: Optional[List[str]] = Field(description="Key achievements or outcomes of the project", default_factory=list)
 
 class ResumeData(BaseModel):
     personal_info: PersonalInfo = Field(description="Personal information of the candidate")
-    education: List[Education] = Field(description="List of educational qualifications")
-    experience: List[Experience] = Field(description="List of work experiences")
-    projects: List[Project] = Field(description="List of projects worked on")
-    skills: List[str] = Field(description="List of technical and soft skills")
+    education: List[Education] = Field(description="List of educational qualifications", default_factory=list)
+    experience: List[Experience] = Field(description="List of work experiences", default_factory=list)
+    projects: List[Project] = Field(description="List of projects worked on", default_factory=list)
+    skills: List[str] = Field(description="List of technical and soft skills", default_factory=list)
 
 class JobDescription(BaseModel):
     title: str = Field(description="Job title")
     company: str = Field(description="Company name")
-    location: Optional[str] = Field(description="Job location")
-    requirements: List[str] = Field(description="List of job requirements")
-    responsibilities: List[str] = Field(description="List of job responsibilities")
-    qualifications: List[str] = Field(description="List of required qualifications")
-    preferred_skills: List[str] = Field(description="List of preferred skills")
+    location: Optional[str] = Field(description="Job location", default=None)
+    requirements: List[str] = Field(description="List of job requirements", default_factory=list)
+    responsibilities: List[str] = Field(description="List of job responsibilities", default_factory=list)
+    qualifications: List[str] = Field(description="List of required qualifications", default_factory=list)
+    preferred_skills: List[str] = Field(description="List of preferred skills", default_factory=list)
 
 class DocumentParser:
     def __init__(self):
@@ -68,8 +68,8 @@ class DocumentParser:
         
         # Initialize LangChain components
         self.llm = ChatOpenAI(
-            model_name="gpt-4-turbo-preview",  # Updated to correct model name
-            temperature=0,  # Set to 0 for more consistent outputs
+            model_name="gpt-4-turbo-preview",
+            temperature=0,
         )
         
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -101,6 +101,11 @@ class DocumentParser:
         Extract structured information from the following resume text. 
         Pay special attention to projects section and include all project details in the specified format.
         Make sure to extract all relevant information about projects including technologies used and achievements.
+        If any field is not found in the text, use appropriate default values (empty list for lists, "Not specified" for optional strings, or null).
+        
+        For education entries, if institution is not clearly mentioned, use "Not specified" instead of null.
+        For experience entries, ensure company and position are provided, use "Not specified" for missing duration.
+        For projects, ensure name and description are always provided, use empty lists for missing technologies and achievements.
 
         Resume Text:
         {text}
