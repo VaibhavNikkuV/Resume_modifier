@@ -91,6 +91,53 @@ class DocumentParser:
             print(f"Error reading PDF file: {e}")
             return None
 
+    def merge_resume_data(self, data_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Merge multiple resume data dictionaries into one."""
+        if not data_list:
+            return None
+
+        # Initialize with the first chunk's data
+        merged_data = data_list[0]
+
+        # Merge data from subsequent chunks
+        for data in data_list[1:]:
+            if not data:
+                continue
+            
+            # Merge education entries
+            merged_data['education'].extend(data.get('education', []))
+            
+            # Merge experience entries
+            merged_data['experience'].extend(data.get('experience', []))
+            
+            # Merge projects
+            merged_data['projects'].extend(data.get('projects', []))
+            
+            # Merge skills (remove duplicates)
+            all_skills = set(merged_data['skills'])
+            all_skills.update(data.get('skills', []))
+            merged_data['skills'] = list(all_skills)
+
+        # Remove duplicate entries based on name/title
+        merged_data['education'] = self._remove_duplicates(merged_data['education'], 'degree')
+        merged_data['experience'] = self._remove_duplicates(merged_data['experience'], 'position')
+        merged_data['projects'] = self._remove_duplicates(merged_data['projects'], 'name')
+
+        return merged_data
+
+    def _remove_duplicates(self, items: List[Dict], key_field: str) -> List[Dict]:
+        """Remove duplicate entries based on a key field."""
+        seen = set()
+        unique_items = []
+        
+        for item in items:
+            item_key = item.get(key_field, '')
+            if item_key and item_key not in seen:
+                seen.add(item_key)
+                unique_items.append(item)
+        
+        return unique_items
+
     def parse_resume(self, text: str) -> Dict[str, Any]:
         """Parse resume text using LangChain and OpenAI."""
         # Create output parser
@@ -107,6 +154,8 @@ class DocumentParser:
         For experience entries, ensure company and position are provided, use "Not specified" for missing duration.
         For projects, ensure name and description are always provided, use empty lists for missing technologies and achievements.
 
+        Important: Extract ALL projects mentioned in the text, don't skip any projects even if they seem less significant.
+
         Resume Text:
         {text}
 
@@ -122,18 +171,22 @@ class DocumentParser:
         # Create chain
         chain = LLMChain(llm=self.llm, prompt=prompt)
 
-        # Split text if it's too long
+        # Split text and process all chunks
         texts = self.text_splitter.split_text(text)
+        parsed_chunks = []
         
-        # Process first chunk (most important part of resume)
-        result = chain.run(text=texts[0])
-        
-        try:
-            parsed_data = parser.parse(result)
-            return parsed_data.model_dump()
-        except Exception as e:
-            print(f"Error parsing resume data: {e}")
-            return None
+        for chunk in texts:
+            try:
+                result = chain.run(text=chunk)
+                parsed_data = parser.parse(result)
+                parsed_chunks.append(parsed_data.model_dump())
+            except Exception as e:
+                print(f"Error parsing chunk: {e}")
+                continue
+
+        # Merge results from all chunks
+        merged_data = self.merge_resume_data(parsed_chunks)
+        return merged_data
 
     def parse_job_description(self, text: str) -> Dict[str, Any]:
         """Parse job description text using LangChain and OpenAI."""
