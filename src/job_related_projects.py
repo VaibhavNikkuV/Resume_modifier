@@ -22,6 +22,16 @@ class Project(BaseModel):
     url: Optional[str] = Field(description="Project URL or repository link if applicable", default=None)
     achievements: List[str] = Field(description="Key achievements or outcomes of the project that align with job requirements")
 
+class SkillList(BaseModel):
+    technical_skills: List[str] = Field(description="Technical skills required or preferred for the job")
+    soft_skills: List[str] = Field(description="Soft skills and professional attributes required for the job")
+    tools: List[str] = Field(description="Specific tools, platforms, or software mentioned in the job description")
+    domain_knowledge: List[str] = Field(description="Industry or domain-specific knowledge areas required")
+
+class JobAnalysis(BaseModel):
+    projects: List[Project] = Field(description="List of suggested projects relevant to the job description")
+    skills: SkillList = Field(description="Skills extracted from and relevant to the job description")
+
 class ProjectSuggestions(BaseModel):
     projects: List[Project] = Field(description="List of suggested projects relevant to the job description")
 
@@ -40,6 +50,72 @@ def load_json_file(file_path: str) -> Dict[str, Any]:
     except Exception as e:
         print(f"Error loading JSON file: {e}")
         return {}
+
+def extract_relevant_skills(job_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract relevant skills from job description."""
+    # Initialize LLM
+    llm = ChatOpenAI(
+        model_name="gpt-4o-mini",
+        temperature=0.2,  # Lower temperature for more focused skill extraction
+    )
+    
+    # Create output parser
+    parser = PydanticOutputParser(pydantic_object=SkillList)
+    
+    # Create prompt template
+    template = """
+    You are a career advisor analyzing a job description to extract relevant skills.
+    
+    Below is a job description. Your task is to extract and categorize all the skills mentioned or implied 
+    in the job description. Be comprehensive and specific.
+    
+    Job Title: {title}
+    Company: {company}
+    
+    Job Requirements:
+    {requirements}
+    
+    Job Responsibilities:
+    {responsibilities}
+    
+    Preferred Skills:
+    {preferred_skills}
+    
+    Extract and categorize the skills into:
+    1. Technical skills (programming languages, methodologies, etc.)
+    2. Soft skills (communication, teamwork, etc.)
+    3. Tools (specific software, platforms, etc.)
+    4. Domain knowledge (industry-specific knowledge areas)
+    
+    Be thorough and include even skills that are implied but not explicitly stated.
+    
+    {format_instructions}
+    """
+    
+    # Format job data for prompt
+    requirements_text = "\n".join([f"- {req}" for req in job_data.get("requirements", [])])
+    responsibilities_text = "\n".join([f"- {resp}" for resp in job_data.get("responsibilities", [])])
+    preferred_skills_text = "\n".join([f"- {skill}" for skill in job_data.get("preferred_skills", [])])
+    
+    prompt = PromptTemplate(
+        template=template,
+        input_variables=["title", "company", "requirements", "responsibilities", "preferred_skills"],
+        partial_variables={"format_instructions": parser.get_format_instructions()}
+    )
+    
+    # Create chain using the pipe operator
+    chain = prompt | llm | parser
+    
+    # Run chain
+    result = chain.invoke({
+        "title": job_data.get("title", "Unnamed Position"),
+        "company": job_data.get("company", "Unnamed Company"),
+        "requirements": requirements_text,
+        "responsibilities": responsibilities_text,
+        "preferred_skills": preferred_skills_text,
+    })
+    
+    return result.model_dump()
 
 def generate_project_suggestions(job_data: Dict[str, Any]) -> Dict[str, Any]:
     """Generate project suggestions based on job description."""
@@ -108,12 +184,28 @@ def generate_project_suggestions(job_data: Dict[str, Any]) -> Dict[str, Any]:
     
     return result.model_dump()
 
+def analyze_job_description(job_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Analyze job description to extract skills and generate project suggestions."""
+    # Generate project suggestions
+    print("Generating project suggestions based on job description...")
+    project_suggestions = generate_project_suggestions(job_data)
+    
+    # Extract relevant skills
+    print("Extracting relevant skills from job description...")
+    skill_list = extract_relevant_skills(job_data)
+    
+    # Combine results
+    return {
+        "projects": project_suggestions["projects"],
+        "skills": skill_list
+    }
+
 def save_as_json(data: Dict[str, Any], file_path: Path) -> None:
     """Save data as JSON file."""
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4)
     
-    print(f"Saved project suggestions to {file_path}")
+    print(f"Saved job analysis to {file_path}")
 
 def main():
     # Check for OpenAI API key
@@ -143,20 +235,24 @@ def main():
         print("Failed to load job description data.")
         return
     
-    # Generate project suggestions
-    print("Generating project suggestions based on job description...")
-    project_suggestions = generate_project_suggestions(job_data)
+    # Analyze job description
+    job_analysis = analyze_job_description(job_data)
     
-    # Save the project suggestions
+    # Save the analysis
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = saved_details_path / f"project_suggestions_{timestamp}.json"
-    save_as_json(project_suggestions, output_file)
+    output_file = saved_details_path / f"job_analysis_{timestamp}.json"
+    save_as_json(job_analysis, output_file)
     
-    print("Project suggestions generated successfully!")
-    print(f"Number of projects generated: {len(project_suggestions['projects'])}")
-    for i, project in enumerate(project_suggestions['projects'], 1):
-        print(f"\nProject {i}: {project['name']}")
-        print(f"Technologies: {', '.join(project['technologies'])}")
+    print("\nJob analysis completed successfully!")
+    print(f"Number of projects suggested: {len(job_analysis['projects'])}")
+    
+    print("\nProject suggestions:")
+    for i, project in enumerate(job_analysis['projects'], 1):
+        print(f"  {i}. {project['name']}")
+    
+    print("\nExtracted skill categories:")
+    for category, skills in job_analysis['skills'].items():
+        print(f"  {category.replace('_', ' ').title()}: {len(skills)} skills identified")
 
 if __name__ == "__main__":
     main()
