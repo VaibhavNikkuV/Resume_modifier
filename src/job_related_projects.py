@@ -45,7 +45,7 @@ def generate_project_suggestions(job_data: Dict[str, Any]) -> Dict[str, Any]:
     """Generate project suggestions based on job description."""
     # Initialize LLM
     llm = ChatOpenAI(
-        model_name="gpt-4-turbo-preview",
+        model_name="gpt-4o-mini",
         temperature=0.7,
     )
     
@@ -103,7 +103,7 @@ def generate_project_suggestions(job_data: Dict[str, Any]) -> Dict[str, Any]:
         "requirements": requirements_text,
         "responsibilities": responsibilities_text,
         "preferred_skills": preferred_skills_text,
-        "num_projects": 3  # Generate 3 project suggestions
+        "num_projects": 4  # Generate 4 project suggestions
     })
     
     return result.model_dump()
