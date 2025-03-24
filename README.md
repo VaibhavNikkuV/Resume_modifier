@@ -119,10 +119,6 @@ python src/resume_generator.py
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Contact
 
 Vaibhav Arya - [@VaibhavNikkuV](https://github.com/VaibhavNikkuV)
