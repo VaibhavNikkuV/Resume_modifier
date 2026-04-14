@@ -1,0 +1,11 @@
+SampleResume/
+saved_details/
+modified_resume/
+
+
+# Added by code-review-graph
+.code-review-graph/
+.env
+.venv
+.claude
+.mcp.json

@@ -2,6 +2,12 @@ langchain>=0.1.0,<0.1.5
 langchain-core>=0.1.10
 langchain-openai==0.0.2
 openai==1.12.0
+# Pin httpx below 0.28: httpx 0.28 removed the `proxies` kwarg from
+# httpx.Client.__init__, which openai 1.12.0 still passes through. Without
+# this pin, ChatOpenAI(...) fails with: Client.__init__() got an unexpected
+# keyword argument 'proxies'. Bump only when openai/langchain-openai are
+# also bumped.
+httpx<0.28
 python-dotenv==1.0.0
 PyPDF2==3.0.1
 pydantic>=2.5.0
@@ -10,4 +16,6 @@ spacy==3.7.2
 nltk==3.8.1
 chromadb==0.4.22
 reportlab==4.0.8
-jinja2==3.1.2 
+jinja2==3.1.2
+pylatex>=1.4.2
+

@@ -74,6 +74,10 @@ def run_script(script_name, step_number, step_description):
             import resume_generator
             # Run the main function from the module
             resume_generator.main()
+        elif script_name == "interview_prep":
+            import interview_prep
+            # Run the main function from the module
+            interview_prep.main()
         print(f"✓ {step_description} completed successfully!")
         return True
     except Exception as e:
@@ -89,7 +93,8 @@ def main():
     print("1. Parsing your resume and job description")
     print("2. Generating job-specific projects and skills")
     print("3. Creating a modified resume PDF optimized for the job")
-    print("\nThe final resume will be saved in the 'modified_resume' directory.")
+    print("4. Generating an interview prep PDF with Q&As for the fabricated projects")
+    print("\nThe final resume and interview prep PDFs will be saved in the 'modified_resume' directory.")
     print_separator()
     
     # Check prerequisites
@@ -119,9 +124,17 @@ def main():
     # Step 3: Generate modified resume
     if not run_script("resume_generator", 3, "Creating modified resume optimized for the job"):
         return
-    
+
+    # Give the system time to write files
+    time.sleep(1)
+
+    # Step 4: Generate interview prep Q&A PDF for the fabricated projects
+    if not run_script("interview_prep", 4, "Generating interview prep Q&A PDF"):
+        return
+
     print_separator()
     print("All steps completed successfully! Your resume is now optimized for the job.")
+    print("Study the interview prep PDF before your interview to defend the generated projects.")
     print("Good luck with your application!")
     print_separator()
 
